@@ -1103,8 +1103,8 @@ class ConnectCommand(unittest.TestCase):
         self.assertEqual(code, 0, err)
         data = json.loads(target.read_text())
         self.assertEqual(data["theme"], "dark")
-        self.assertIn("other", data["provider"])
-        self.assertIn("strata", data["provider"])
+        self.assertIn("other", data["provider"])                              # the user's old V1 keys survive the merge
+        self.assertIn("strata", data["providers"])                            # the native V2 entry OpenCode 2 prefers
         backups = list(target.parent.glob("opencode.json.strata-bak-*"))
         self.assertEqual(len(backups), 1)
         self.assertEqual(json.loads(backups[0].read_text())["theme"], "dark")
@@ -1144,11 +1144,39 @@ class ConnectCommand(unittest.TestCase):
 
     def test_opencode_has_limit_input_and_the_15k_compaction_buffer(self):
         cfg = json.loads(self.render("opencode")["files"][0]["text"])
-        m = cfg["provider"]["strata"]["models"]["qwen3.8-flash-next-q2_0"]
+        m = cfg["providers"]["strata"]["models"]["qwen3.8-flash-next-q2_0"]
         self.assertEqual(m["limit"], {"context": 32768, "input": 28672, "output": 4096})
         self.assertEqual(cfg["compaction"]["buffer"], 13672)                  # 28672 - 15000
-        self.assertEqual(cfg["provider"]["strata"]["options"]["baseURL"], "http://127.0.0.1:18900/v1")
-        self.assertEqual(cfg["provider"]["strata"]["options"]["apiKey"], "strata-local")
+        self.assertEqual(cfg["providers"]["strata"]["settings"]["baseURL"], "http://127.0.0.1:18900/v1")
+        self.assertEqual(cfg["providers"]["strata"]["settings"]["apiKey"], "strata-local")
+
+    def test_opencode_defaults_to_the_v2_schema_and_v1_forces_the_old_one(self):
+        """OpenCode 2 reads V1 files but drops the model's reasoning flag as an unsupported legacy setting (measured on
+        opencode 2.1.4), so the default is the native V2 shape (providers/settings/package, capabilities); --v1 keeps
+        the OpenCode 1.x shape."""
+        cfg = json.loads(self.render("opencode")["files"][0]["text"])
+        self.assertIn("providers", cfg)
+        self.assertNotIn("provider", cfg)
+        self.assertEqual(cfg["providers"]["strata"]["package"], "aisdk:@ai-sdk/openai-compatible")
+        self.assertEqual(cfg["providers"]["strata"]["models"]["qwen3.8-flash-next-q2_0"]["capabilities"],
+                         {"tools": True})                                 # no reasoning capability claimed: untested
+        self.assertEqual(cfg["agents"]["title"]["model"], "strata/qwen3.8-flash-next-q2_0")
+        self.assertEqual(cfg["update"], "disable")
+        self.assertNotIn("small_model", cfg)
+        self.assertNotIn("autoupdate", cfg)
+        code, out, _ = run_cli(["connect", "opencode", "--url", "http://127.0.0.1:8123", "--output", "json"])
+        self.assertEqual(json.loads(out)["config_schema"], "v2")
+        code, out, _ = run_cli(["connect", "opencode", "--url", "http://127.0.0.1:8123", "--v1", "--model", "qwen3.8-flash-next-q2_0", "--output", "json"])
+        data = json.loads(out)
+        self.assertEqual(data["config_schema"], "v1")
+        old = json.loads(data["files"][0]["text"])
+        self.assertIn("provider", old)
+        self.assertNotIn("providers", old)
+        self.assertEqual(old["provider"]["strata"]["npm"], "@ai-sdk/openai-compatible")
+        self.assertTrue(old["provider"]["strata"]["models"]["qwen3.8-flash-next-q2_0"]["tool_call"])
+        self.assertEqual(old["provider"]["strata"]["options"]["baseURL"], "http://127.0.0.1:8123/v1")
+        self.assertEqual(old["small_model"], "strata/qwen3.8-flash-next-q2_0")
+        self.assertIs(old["autoupdate"], False)
 
     def test_codex_uses_responses_and_the_key_variable(self):
         out = self.render("codex", key="sk-real")

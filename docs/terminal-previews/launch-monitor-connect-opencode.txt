@@ -9,7 +9,7 @@
       also reachable at http://192.168.88.21:8080/v1
 
     App              Works with        Vendor tested           This server
-   > OpenCode         chat + tools      opencode 1.19.3         Not checked
+   > OpenCode         chat + tools      opencode 2.1.4          Not checked
      Codex CLI        responses + tools codex-cli 0.163.0       Not checked
      Claude Code      messages + tools  Claude Code 2.1.302     Not checked
      oh-my-pi (omp)   chat + tools      omp 18.11.2             Not checked
@@ -23,15 +23,15 @@
    {
      "$schema": "https://opencode.ai/config.json",
      "model": "strata/qwen3.8-flash-next-iq3_xxs",
-     "small_model": "strata/qwen3.8-flash-next-iq3_xxs",
-     "autoupdate": false,
-   ... 28 more lines (c copies all)
+     "agents": {
+   ... 34 more lines (c copies all)
  Good to know
    - The setup needs limit.input (strata connect sets it to 28672); without it OpenCode never compacts its
      conversation.
    - Its first start downloads a plug-in from npm (internet needed once; the first run can take over a minute).
    - In a script or over ssh, run it as: opencode run "..." < /dev/null (it waits for typing otherwise).
    - Its system prompt and tools take about 7.4K tokens of the window.
+   - This file uses the OpenCode 2 schema; an older OpenCode 1.x needs the old one: strata connect opencode --v1.
 
 
 

@@ -571,28 +571,30 @@ tables per token). The scaling is fixed for the whole run, because the KV cache 
   `"capabilities": {"tools": true, "chat_completions": true}` on that model in Zed's settings.
 - **Claude Code:** set `ANTHROPIC_BASE_URL=http://127.0.0.1:8080` and `ANTHROPIC_MODEL` to a Claude model name it knows
   (Strata ignores the name), plus any `ANTHROPIC_AUTH_TOKEN` (or your `api_key`).
-- **OpenCode:** a starting point for `opencode.jsonc`. The field names are OpenCode's, so check its config docs if your version
-  differs.
+- **OpenCode:** a starting point for `opencode.jsonc`, in the OpenCode 2 shape (`providers`, `settings`, `capabilities`).
+  OpenCode 2 still reads the old V1 shape, but drops the model's `reasoning` flag as an unsupported legacy setting
+  (measured on opencode 2.1.4). The field names are OpenCode's, so check its config docs if your version differs.
 
   ```jsonc
   {
     "$schema": "https://opencode.ai/config.json",
-    "provider": {
+    "providers": {
       "strata": {
-        "npm": "@ai-sdk/openai-compatible",
+        "package": "aisdk:@ai-sdk/openai-compatible",
         "name": "Strata (local)",
-        "options": { "baseURL": "http://127.0.0.1:8080/v1", "apiKey": "none" },  // or your api_key
+        "settings": { "baseURL": "http://127.0.0.1:8080/v1", "apiKey": "none" },  // or your api_key
         "models": {
           "strata": {
             "name": "Qwen3.8-Flash-Next (Strata)",
+            "capabilities": { "tools": true },
             // context: what you chose in setup; output: what one reply may use (prompt + output must fit)
             "limit": { "context": 262144, "output": 32768 },
-            "options": { "reasoningEffort": "high" },
-            "variants": {
-              "low": { "reasoningEffort": "low" },
-              "medium": { "reasoningEffort": "medium" },
-              "none": { "reasoningEffort": "none" }
-            }
+            "settings": { "reasoningEffort": "high" },
+            "variants": [
+              { "id": "low", "settings": { "reasoningEffort": "low" } },
+              { "id": "medium", "settings": { "reasoningEffort": "medium" } },
+              { "id": "none", "settings": { "reasoningEffort": "none" } }
+            ]
           }
         }
       }

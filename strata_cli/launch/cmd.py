@@ -165,6 +165,7 @@ def add_parsers(sp: argparse._SubParsersAction) -> list[argparse.ArgumentParser]
     c.add_argument("--write", action="store_true", help="write the file(s), after asking; a replaced file is backed up first")
     c.add_argument("--yes", action="store_true", help="do not ask before --write")
     c.add_argument("--show-key", action="store_true", help="print the real key instead of a masked one")
+    c.add_argument("--v1", action="store_true", help="opencode only: write its old (V1) config shape; the default is the OpenCode 2 shape")
     c.add_argument("--output", choices=("human", "json"), default="human")
     return [p, c]
 
@@ -901,7 +902,7 @@ def run_connect(a: argparse.Namespace) -> int:
     key = a.key or (os.environ.get(a.key_env) if a.key_env else None) or info.get("key") or ""
     model = a.model or info.get("model") or "strata"
     context = a.context or info.get("context") or 32768
-    tgt = harness.target(url, key, model, context)
+    tgt = harness.target(url, key, model, context, config_v1=a.v1)
     out = harness.render(h, tgt)
     shown_key = key if a.show_key else None
     if machine:
@@ -909,6 +910,8 @@ def run_connect(a: argparse.Namespace) -> int:
                                                        if k != "files"},
                    "files": [{**f, "text": harness.mask(f["text"], key)} for f in out["files"]],
                    "vendor_tested": h.tested or None}
+        if h.id == "opencode":
+            payload["config_schema"] = "v1" if tgt.config_v1 else "v2"
         if not a.check:
             print(json.dumps(payload))
             return 0

@@ -33,6 +33,7 @@ class Target:
     key: str                           # real key, or the placeholder
     model: str
     context: int = 32768
+    config_v1: bool = False            # opencode only: write its old (V1) config shape instead of the OpenCode 2 one
 
     @property
     def base(self) -> str:
@@ -90,6 +91,30 @@ def _j(obj) -> str:
 # ------------------------------------------------------------------------------------------------ the eight
 
 def opencode_file(t: Target) -> str:
+    if t.config_v1:
+        return opencode_file_v1(t)
+    return opencode_file_v2(t)
+
+
+def opencode_file_v2(t: Target) -> str:
+    """The OpenCode 2 (native) shape: providers/settings/package instead of provider/options/npm, capabilities instead of
+    the tool_call flag, and agents.title instead of small_model. Tested on opencode 2.1.4: it loads with no configuration
+    diagnostics. It claims no reasoning capability: OpenCode 2 dropped the old flag anyway, and the new one is untested."""
+    return _j({"$schema": "https://opencode.ai/config.json", "model": f"strata/{t.model}",
+               "agents": {"title": {"model": f"strata/{t.model}"}},
+               "update": "disable",
+               "compaction": {"auto": True, "buffer": max(1024, t.input_limit - compact_at(t))},
+               "share": "disabled",
+               "providers": {"strata": {"package": "aisdk:@ai-sdk/openai-compatible", "name": "Strata (local)",
+                                        "settings": {"baseURL": t.base, "apiKey": t.key},
+                                        "models": {t.model: {"name": "Qwen3.8-Flash-Next (local)",
+                                                             "capabilities": {"tools": True},
+                                                             "limit": {"context": t.context, "input": t.input_limit, "output": OUTPUT_CAP}}}}}})
+
+
+def opencode_file_v1(t: Target) -> str:
+    """The OpenCode 1 shape, kept for --v1 and for people still on OpenCode 1.x. OpenCode 2 reads it too, but on 2.1.4 it
+    omitted the model's reasoning flag as an unsupported legacy setting and wrote a warning in its log."""
     return _j({"$schema": "https://opencode.ai/config.json", "model": f"strata/{t.model}", "small_model": f"strata/{t.model}",
                "autoupdate": False,
                "compaction": {"auto": True, "buffer": max(1024, t.input_limit - compact_at(t))},
@@ -162,10 +187,17 @@ def openclaw_file(t: Target) -> str:
 
 
 def _limits_opencode(t: Target) -> list[str]:
-    return ["The setup needs limit.input (strata connect sets it to %d); without it OpenCode never compacts its conversation." % t.input_limit,
-            "Its first start downloads a plug-in from npm (internet needed once; the first run can take over a minute).",
-            "In a script or over ssh, run it as: opencode run \"...\" < /dev/null (it waits for typing otherwise).",
-            "Its system prompt and tools take about 7.4K tokens of the window."]
+    out = ["The setup needs limit.input (strata connect sets it to %d); without it OpenCode never compacts its conversation." % t.input_limit,
+           "Its first start downloads a plug-in from npm (internet needed once; the first run can take over a minute).",
+           "In a script or over ssh, run it as: opencode run \"...\" < /dev/null (it waits for typing otherwise).",
+           "Its system prompt and tools take about 7.4K tokens of the window."]
+    if t.config_v1:
+        out.append("This file uses the OpenCode 1 schema (--v1); OpenCode 2 reads it but omits the model's reasoning flag "
+                   "as an unsupported legacy setting, a warning in its log (measured on opencode 2.1.4). Without --v1 "
+                   "strata connect writes the OpenCode 2 schema.")
+    else:
+        out.append("This file uses the OpenCode 2 schema; an older OpenCode 1.x needs the old one: strata connect opencode --v1.")
+    return out
 
 
 def _limits_codex(t: Target) -> list[str]:
@@ -220,7 +252,7 @@ def _limits_dsh(t: Target) -> list[str]:
 
 
 HARNESSES: list[Harness] = [
-    Harness("opencode", "OpenCode", "chat + tools", tested="opencode 1.19.3",
+    Harness("opencode", "OpenCode", "chat + tools", tested="opencode 2.1.4",
             files=[FileSpec("~/.config/opencode/opencode.json", "json", opencode_file, merge=True)], limits=_limits_opencode,
             run='opencode run "your task"', install="npm i -g opencode-ai"),
     Harness("codex", "Codex CLI", "responses + tools", tested="codex-cli 0.163.0",
@@ -269,8 +301,9 @@ def server_root(url: str) -> str:
     return root[:-3].rstrip("/") if root.lower().endswith("/v1") else root
 
 
-def target(url: str, key: str | None, model: str, context: int | None = None) -> Target:
-    return Target(url=server_root(url), key=key or PLACEHOLDER_KEY, model=model or "strata", context=int(context or 32768))
+def target(url: str, key: str | None, model: str, context: int | None = None, config_v1: bool = False) -> Target:
+    return Target(url=server_root(url), key=key or PLACEHOLDER_KEY, model=model or "strata", context=int(context or 32768),
+                  config_v1=config_v1)
 
 
 def render(h: Harness, t: Target) -> dict:

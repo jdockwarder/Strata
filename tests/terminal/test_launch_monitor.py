@@ -50,7 +50,7 @@ class Connect(unittest.TestCase):
             self.assertIn("Vendor tested", t)
             self.assertIn("This server", t)
             self.assertIn("Not checked", t)
-            self.assertIn("opencode 1.19.3", t)
+            self.assertIn("opencode 2.1.4", t)
             self.assertIn("OpenCode setup", t)
             self.assertIn("~/.config/opencode/opencode.json", t)
             await pilot.press("k")
@@ -124,7 +124,7 @@ class Connect(unittest.TestCase):
             self.run_app(case)
             data = json.loads(target.read_text())
             self.assertEqual(data["theme"], "dark")
-            self.assertIn("strata", data["provider"])
+            self.assertIn("strata", data["providers"])
             self.assertEqual(len(list(target.parent.glob("opencode.json.strata-bak-*"))), 1)
 
     def test_write_can_be_declined(self):
