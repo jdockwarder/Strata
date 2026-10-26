@@ -5,17 +5,19 @@
  1 Overview  2 Serving  3 Requests  4 Engine  5 Hardware  6 Logs  [7 Connect]
  ----------------------------------------------------------------------------------------------------
  Connect an app     URL http://127.0.0.1:8080/v1    model qwen3.8-flash-next-iq3_xxs    key sk-strata-****  (k show)
+      Claude Code and other Anthropic apps use http://127.0.0.1:8080 (no /v1)
       also reachable at http://192.168.88.21:8080/v1
 
-    App                 Works with            Status
-   > OpenCode            chat + tools          tested ok
-     Codex CLI           responses + tools     tested ok
-     Claude Code         messages + tools      tested ok
-     oh-my-pi (omp)      chat + tools          tested ok
-     pi (pi.dev)         chat + tools          tested ok
-     Hermes Agent        chat + tools          tested ok
-     OpenClaw            chat + tools          tested ok
-     DeepSeek Harness    the Strata app        tested ok
+    App              Works with        Vendor tested           This server
+   > OpenCode         chat + tools      opencode 1.19.3         Not checked
+     Codex CLI        responses + tools codex-cli 0.163.0       Not checked
+     Claude Code      messages + tools  Claude Code 2.1.302     Not checked
+     oh-my-pi (omp)   chat + tools      omp 18.11.2             Not checked
+     pi (pi.dev)      chat + tools      pi 0.74.2               Not checked
+     Hermes Agent     chat + tools      Hermes Agent 2026.9.24  Not checked
+     OpenClaw         chat + tools      OpenClaw 2026.10.4      Not checked
+     DeepSeek Harness the Strata app    built into Strata       Not checked
+ Vendor tested = the app version its maker tested this setup with. This server = whether YOUR server answered the app'…
 
  OpenCode setup   ~/.config/opencode/opencode.json
    {
@@ -23,10 +25,7 @@
      "model": "strata/qwen3.8-flash-next-iq3_xxs",
      "small_model": "strata/qwen3.8-flash-next-iq3_xxs",
      "autoupdate": false,
-     "compaction": {
-       "auto": true,
-       "buffer": 13672
-   ... 25 more lines (c copies all)
+   ... 28 more lines (c copies all)
  Good to know
    - The setup needs limit.input (strata connect sets it to 28672); without it OpenCode never compacts its
      conversation.
@@ -36,4 +35,5 @@
 
 
 
- c copy   w write it for me (keeps a backup)   h check it   1-7 views   q quit (asks: keep serving / stop)
+
+ c copy  w write it for me (keeps a backup)  h check it  k key  Esc back  1-7 views  q quit
